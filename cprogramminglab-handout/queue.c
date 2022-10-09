@@ -44,13 +44,13 @@ queue_t *queue_new(void) {
 void queue_free(queue_t *q) {
     /* How about freeing the list elements and the strings? */
     /* Free queue structure */
-    list_ele_t *ele = q->head;
-    while (ele != NULL){
-        list_ele_t *next = ele->next;
-        free(ele->value); // Free the string
-        free(ele);
-        ele = next; // slide to the next element
+    if (q == NULL){
+        return;
     }
+    while (q->head!=NULL){
+        queue_remove_head(q, NULL, 0);
+    }
+    free(q);
 }
 
 /**
@@ -80,17 +80,25 @@ bool queue_insert_head(queue_t *q, const char *s) {
 
     /* What if either call to malloc returns NULL? */
     if (newh == NULL || news == NULL){
+        free(news);
+        free(newh); // sometimes the newh is null but news is not;
         return false;
     }
 
     newh->next = q->head;
     q->head = newh;
+
+    if (q->size == 0){
+        q->tail = newh; // Empty queue => 1-element queue
+    }
+
     q->size ++;
 
     strcpy(news, s);
     newh->value = news;
     return true;
-}
+    }
+
 
 /**
  * @brief Attempts to insert an element at tail of a queue
@@ -115,15 +123,21 @@ bool queue_insert_tail(queue_t *q, const char *s) {
     char *news;
 
     newt = malloc(sizeof(list_ele_t));
-    news=malloc(strlen(s) + 1);
+    news = malloc(strlen(s) + 1);
 
     if (newt == NULL || news == NULL){
+        free(news);
+        free(newt); // sometimes the newh is null but news is not;
         return false;
     }
 
-    newt->next = q->tail->next; // Both should be NULL
+    newt->next=NULL;
     q->tail->next = newt; // Add new element to the tail
     q->tail = newt; // Update the tail to the new element
+
+    if(q->size == 0){
+        q->head = newt; // Empty queue => 1-element queue
+    }
     q->size ++;
 
     strcpy(news, s);
@@ -150,16 +164,21 @@ bool queue_insert_tail(queue_t *q, const char *s) {
  */
 bool queue_remove_head(queue_t *q, char *buf, size_t bufsize) {
     /* You need to fix up this code. */
-    if (q==NULL){
+    if (q==NULL || q->head == NULL){
         return false;
     }
+
 
     list_ele_t *oldh = q->head;
     q->head = q->head->next;
 
+    if (q->head == NULL){
+        q->tail = NULL; // 1-element => empty
+    }
+
     if (buf != NULL){
         strncpy(buf, oldh->value, bufsize-1);
-        buf[bufsize -1 ] = END_OF_FILE_CHAR;
+        buf[bufsize -1] = END_OF_FILE_CHAR;
     }
 
     free(oldh->value);
