@@ -143,7 +143,12 @@ NOTES:
  *   Rating: 1
  */
 int bitXor(int x, int y) {
-  return 2;
+    /* In A, matching ones of x and y will be one.
+     * In B, matching zeros of x and y will be one.
+     * If A and B has a matching zeros, then both conditions above are excluded.*/
+    int A = x & y;
+    int B = ~x & ~y;
+    return ~A & ~B;
 }
 /* 
  * tmin - return minimum two's complement integer 
@@ -152,8 +157,8 @@ int bitXor(int x, int y) {
  *   Rating: 1
  */
 int tmin(void) {
-
-  return 2;
+    /*tmin bit patterns. 1 followed by 31 0s.*/
+    return 1 << 31;
 
 }
 //2
@@ -165,7 +170,12 @@ int tmin(void) {
  *   Rating: 1
  */
 int isTmax(int x) {
-  return 2;
+    /*
+     * when x = -1 or Tmax, x + 1 is complement of x.
+     * In other words, when x + 1 is not zero and is the complement of x, x is the Tmax.
+     * */
+    int y = x + 1;
+    return (!(~y ^ x)) & !(!(y ^ 0));
 }
 /* 
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
@@ -176,7 +186,10 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
-  return 2;
+    int mask = 0xAA;
+    return 0;
+
+
 }
 /* 
  * negate - return -x 
