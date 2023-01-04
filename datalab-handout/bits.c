@@ -186,8 +186,15 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
+    /*
+     * I first construct a mask as 0xAAAAAAAA.
+     * the odd bits of x should be the same with the mask.
+     * So x & mask will be equal to  mask.
+     * */
     int mask = 0xAA;
-    return 0;
+    mask = mask + (mask << 8);
+    mask = mask + (mask << 16);
+    return !((x & mask) ^ mask);
 
 
 }
@@ -199,7 +206,10 @@ int allOddBits(int x) {
  *   Rating: 2
  */
 int negate(int x) {
-  return 2;
+    /**
+     * this is from the textbook
+     */
+    return ~x + 1;
 }
 //3
 /* 
@@ -212,7 +222,15 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return 2;
+    int mask = 0xF;
+    int firstHexDigit = x & mask;
+    mask = 0x12;
+    int thirdFourthBits = firstHexDigit & mask;
+
+    x = x << 8;
+    int secondHexDigit = x & mask;
+
+    return !(secondHexDigit ^ 0x3) & !(x);
 }
 /* 
  * conditional - same as x ? y : z 
