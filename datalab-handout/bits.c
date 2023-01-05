@@ -222,15 +222,29 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-    int mask = 0xF;
-    int firstHexDigit = x & mask;
-    mask = 0x12;
-    int thirdFourthBits = firstHexDigit & mask;
 
-    x = x << 8;
-    int secondHexDigit = x & mask;
+    /**
+     * The pattern of x can be one of the following
+     * 1.  0000...00110???
+     * 2.  0000...0011100?
+     */
+    int mask1 = (~0) << 4;
+    int A = x & mask1;
+    int isSecondHexOk = !(A ^ 0x30);
 
-    return !(secondHexDigit ^ 0x3) & !(x);
+    //case 1: 100x
+    int mask2 = 0xE;
+    int B = x & mask2;
+    int isCase1Ok  = !(B^0x8);
+
+    // case 2: 0xxx
+    int mask3 = 0x8;
+    int C = x & mask3;
+    int isCase2Ok = !(C^0);
+
+    int isFirstHexOk = (isCase1Ok | isCase2Ok);
+
+    return isFirstHexOk & isSecondHexOk;
 }
 /* 
  * conditional - same as x ? y : z 
@@ -240,7 +254,13 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return 2;
+    /**
+     * Create a mask of 111..., when x is zero;
+     * Create a mask of 0000...., when x is one;
+     */
+    int isXZero = !x;
+    int mask = ((isXZero << 31) >>31);
+  return (~mask & y) | (mask & z);
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -250,7 +270,28 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+    /**
+     *  if  xy < 0, it is possible to overflow.  Just check the sign of x or y.
+     *  if xy >= 0, check the sign of y - x, which should be 0 if x <=y.
+     */
+
+  // case 1: different sign
+    int signMask = 1;
+    int signX = (x >> 31) & signMask;
+    int signY = (y >> 31) & signMask;
+    int isSignsDifferent = signX ^ signY;
+    int case1Ok = isSignsDifferent & (!(signY ^ 0));
+
+
+
+
+  // case 2: the same sign
+  int negX = ~x + 1;
+  int yMinusX = y + negX;
+  int signYMinusX = (yMinusX >> 31) & signMask;
+  int case2OK =(!isSignsDifferent) & (!(signYMinusX ^ 0));
+
+  return  case1Ok | case2OK ;
 }
 //4
 /* 
@@ -262,7 +303,18 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  return 2;
+    /**
+     * When x is zero or Tmin, the bitpatterns of x and -x are the same.
+     * Then, their sign bits are the same. Otherwise, the sign bits are 0 and 1.
+     * Check the sign of x and the XOR of sign bits of x and -x, which should be zero.
+     */
+    int signMask = 1;
+    int signX = (x>>31) & signMask;
+
+    int negX = ~x + 1;
+    int A = x ^ negX;
+    int signA = (A >> 31) & signMask;
+    return (signA ^ 1) & (signX ^ 1);
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
@@ -277,8 +329,54 @@ int logicalNeg(int x) {
  *  Rating: 4
  */
 int howManyBits(int x) {
-  return 0;
+    //credit: https://github.com/codeAligned/CMU-15213-Lab/blob/master/1_DataLab/datalab-handout-solution/bits.c
+    int bitNumTotal = 0;
+    int mask1 = (0xFF | 0xFF << 8) << 8; //0xFFFF0000
+    int bitNum = 0;
+    int mask2 = 0xFF << 8 ; // 0x0000FF00
+    int mask3 = 0xF0; // 0x000000F0
+    int mask4 = 0xC; //0X00.....001100;
+    int mask5 = 0x1; //0X00.....000010;
+
+
+    x = x ^ (x >> 31);
+    // if x is negative, convert x into a positive number sharing the same necessary two-complement bit numbers.
+
+
+    // Case 1:  31rst - 16th bits contains at least a 1.
+    bitNum = (!!(x & mask1)) << 4; // 16 or 0
+    x = x >> bitNum;
+    bitNumTotal += bitNum;
+
+    // Case 2: 15th - 8th bits contains at least a 1;
+
+    bitNum = (!!(x & mask2)) << 3; // 8 or 0
+    x = x >> bitNum;
+    bitNumTotal += bitNum;
+
+    //Case 3: 7th -4th bits contains at least a 1;
+
+    bitNum = (!!(x & mask3)) << 2; //  4 or 0
+    x = x >> bitNum;
+    bitNumTotal += bitNum;
+
+    // Case 4: 3rd-2nd bits contains at least 1
+    bitNum = (!!(x & mask4)) << 1; //2 or 0
+    x = x >> bitNum;
+    bitNumTotal += bitNum;
+
+    // case 5: 1rst bit contains 1
+
+    bitNum = (!!(x & mask5)); // 1 or 0
+    bitNumTotal += bitNum;
+
+
+    bitNumTotal  += 1; // at least need one bit for the 0th bit
+
+    return bitNumTotal;
 }
+
+
 //float
 /* 
  * floatScale2 - Return bit-level equivalent of expression 2*f for
