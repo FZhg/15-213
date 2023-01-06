@@ -329,14 +329,20 @@ int logicalNeg(int x) {
  *  Rating: 4
  */
 int howManyBits(int x) {
+    /**
+     * The author of this solution cleverly used two techniques:
+     * 1. a binary search of the first one in the bit pattern
+     * 2. use logical negation to detect ones in the subrange of the bit pattern.
+     */
     //credit: https://github.com/codeAligned/CMU-15213-Lab/blob/master/1_DataLab/datalab-handout-solution/bits.c
     int bitNumTotal = 0;
-    int mask1 = (0xFF | 0xFF << 8) << 8; //0xFFFF0000
+    int mask1 = (0xFF | 0xFF << 8) << 16; //0xFFFF0000
     int bitNum = 0;
-    int mask2 = 0xFF << 8 ; // 0x0000FF00
+    int mask2 = 0xFF << 8; // 0x0000FF00
     int mask3 = 0xF0; // 0x000000F0
     int mask4 = 0xC; //0X00.....001100;
-    int mask5 = 0x1; //0X00.....000010;
+    int mask5 = 0x2; //0X00.....000010;
+    int mask6 = 0x1;//0X00.....000001;
 
 
     x = x ^ (x >> 31);
@@ -368,10 +374,16 @@ int howManyBits(int x) {
     // case 5: 1rst bit contains 1
 
     bitNum = (!!(x & mask5)); // 1 or 0
+    x = x >> bitNum;
     bitNumTotal += bitNum;
 
 
-    bitNumTotal  += 1; // at least need one bit for the 0th bit
+    // case 6: 0th bit contains 1
+    bitNum = (x & mask6); // 1 or 0
+    bitNumTotal += bitNum;
+
+
+    bitNumTotal += 1; // at least need one bit for the 0th bit
 
     return bitNumTotal;
 }
@@ -390,7 +402,34 @@ int howManyBits(int x) {
  *   Rating: 4
  */
 unsigned floatScale2(unsigned uf) {
-  return 2;
+    /**
+     * There is smooth transition from denorm to norm.
+     * So for case 2, a simple leftshift works.
+     */
+    int expMask = 0x7F800000;
+    int fracMask = 0x007FFFFF;
+    int signMask = 1 << 31;
+
+    int e = uf & expMask;
+    int frac = uf & fracMask;
+    int sign = uf & signMask;
+
+    // case 1: uf is NaN and infinity
+    if (!(e ^ expMask)) {
+        return uf;
+    } else if (!e) {
+        // case 2: uf is in denorm
+        // case 2.1 without overflow
+        // case 2.1 with overflow
+        frac = frac << 1;
+        return sign | e | frac;
+
+    } else {
+        // case 3: uf is in norm
+        e = e + (1 << 23);
+        return sign | e | frac;
+    }
+
 }
 /* 
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
@@ -405,7 +444,50 @@ unsigned floatScale2(unsigned uf) {
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
-  return 2;
+    /**
+     * For normalized float, just shift the frac according to E.
+     */
+    int expMask = 0x7F800000;
+    int fracMask = 0x007FFFFF;
+    int signMask = 1 << 31;
+
+    int exp = uf & expMask;
+    int frac = uf & fracMask;
+    int sign = uf & signMask;
+
+    // case 1: uf is NaN and infinity
+    if (!(exp ^ expMask)) {
+        return 0x80000000u;
+    } else if (!exp) {
+        // case 2: uf is in denorm
+        return 0; // round towards zero
+    } else {
+        // case 3: uf is in norm
+        int bias = 127;
+        int e = (exp >> 23);
+        int E = e - bias;
+        if (E < 0) {
+            return 0; // round towards zero
+        } else if (E > 31) {
+            return 0x80000000u; // overflow
+
+        } else {
+
+            int significandLeftShifted23 = ((1 << 30) >> 7) | frac;
+            int significandRounded = 0;
+            if (E - 23 > 0) {
+                significandRounded = significandLeftShifted23 << (E - 23);
+            } else {
+                significandRounded = significandLeftShifted23 >> (23 - E);
+            }
+            if (sign == (1 << 31)) {
+                return -significandRounded;
+            } else {
+                return significandRounded;
+            }
+
+        }
+    }
 }
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
@@ -421,5 +503,29 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-    return 2;
+    /**
+     * The fraction for denormalized float has to contain a single 1;
+     * The fraction for the normalized float has to be all zeros.
+     */
+    int minE = (1 - 127) + (-23);
+    int bias = 127;
+    int maxE = 0xFE - bias;
+    if (x < minE) {
+        return 0; // underflow
+    } else if (x > maxE) {
+        return (0xFF << 23); // overflow
+    } else {
+        int denormE = 1 - bias;
+        int maxDenormE = denormE - 1;
+        if (x <= maxDenormE) {
+            // represent by a denorm
+            int fracExp = x - denormE;
+            int frac = 1 << (22 + fracExp + 1);
+            return 0 | frac;
+        } else {
+            //represent by a norm
+            int e = x + bias;
+            return (e << 23);
+        }
+    }
 }
