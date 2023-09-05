@@ -5,6 +5,8 @@
 #include <unistd.h>	
 #include <getopt.h>
 
+
+
 /**
  * Only print out help message when it is not ever printed
  * Usage: isHelpMessagePrinted = printHelpMessage(argv[0], stderr, isHelpMessagePrinted);
@@ -68,32 +70,66 @@ void parseArguments(int argc, char* argv[], int *verbose, int *sets, int *associ
         }
     }
     // check for mandatory arguments
-    if (sets == 0 || associativity == 0  || blocks == 0 || traceFile == NULL){
+    if (*sets == 0 || *associativity == 0  || *blocks == 0 || *traceFile == NULL){
         fprintf(stderr, "%s: Missing required command line argument\n", argv[0]);
         isHelpMessagePrinted = printHelpMessage(argv[0], stderr, isHelpMessagePrinted);
         exit(EXIT_FAILURE);
     }
 }
 
+struct cacheLine {
+    int valid; // 0 => not valid: no meaningful data is in the line; 1 => valid; 
+    int tag; // tag => which line
+};
 
+
+void initCache(int numSets, int associativity, struct cacheLine cache[][associativity] ){
+    for (int i = 0; i < numSets; i ++) {
+        for (int j = 0; j < associativity; j ++){
+            cache[i][j].valid = 0;
+            cache[i][j].tag = j;
+        }
+
+    }
+}
+
+void scanTraceFile(FILE * traceFile, struct cacheLine** cache){
+
+}
 
 
 int main(int argc, char *argv[])
 {
     int verbose = 0;
-    int sets = 0;
+    int numSetIndexBits = 0;
     int associativity = 0;
-    int blocks = 0;
-    char* traceFile=NULL;
-    parseArguments(argc, argv, &verbose, &sets, &associativity, &blocks, &traceFile);
+    int numBlocksIndexBits = 0;
+    char* traceFilePath=NULL;
+    parseArguments(argc, argv, &verbose, &numSetIndexBits, &associativity, &numBlocksIndexBits, &traceFilePath);
     printf(
         "verborse: %d; sets: %d; associativity: %d; block: %d; traceFile: %s\n", 
         verbose,
-        sets,
+        numSetIndexBits,
         associativity,
-        blocks,
-        traceFile
+        numBlocksIndexBits,
+        traceFilePath
         );
+    
+
+    int numSets = 1 << numSetIndexBits;
+    struct cacheLine cache[numSets][associativity];
+    initCache(numSets, associativity, cache);
+        for (int i = 0; i < numSets; i ++) {
+        for (int j = 0; j < associativity; j ++){
+            printf("cache[%d][%d]: valid %d, tag %d\n", i, j, cache[i][j].valid, cache[i][j].tag);
+        }
+
+    }
+    FILE *traceFile;
+    if  (! (traceFile = fopen(traceFilePath, "r"))){
+        fprintf(stderr, "%s: No such file or directory\n", traceFilePath);
+        exit(EXIT_FAILURE);
+    }
+
     return 0;
 }
-
